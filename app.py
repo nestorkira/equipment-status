@@ -1,8 +1,30 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
+from datetime import datetime, timedelta
 import datetime
 import base64
+
+now = datetime.datetime.now()
+hora = now.hour
+
+if 7 <= hora < 19:
+    turno = "T/D"
+    fecha_operacion = now
+else:
+    turno = "T/N"
+    if hora < 7:
+        fecha_operacion = now - datetime.timedelta(days=1)
+    else:
+        fecha_operacion = now
+
+fecha_str = fecha_operacion.strftime("%d-%m")
+
+titulo = (
+    f"<b style='color:black; font-size:30px'>"
+    f"ESTADO DE EQUIPOS - OPERACIÓN {fecha_str} {turno}"
+    f"</b>"
+)
 
 def load_image_base64(image_path):
     with open(image_path, "rb") as f:
@@ -79,11 +101,10 @@ if file:
     df["DuracionTexto"] = df["Duracion"].apply(
         lambda x: (
             f"{int(x.total_seconds()//3600):02d}:{int((x.total_seconds()%3600)//60):02d}"
-            if x.total_seconds() >= 1800 else ""   # ← solo mostrar si es >= 30 min
+            if x.total_seconds() >= 1800 else ""
         )
     )
 
-    # Ordenar por equipo y hora inicio para evitar desalineos en el texto
     df = df.sort_values(["Equipo", "Hora Inicio"]).reset_index(drop=True)
 
     hora_inicio_global = datetime.datetime.combine(datetime.date.today(), datetime.time(6, 30))
@@ -98,7 +119,6 @@ if file:
 
     df["Color"] = df["Estado"].apply(lambda x: colores_estado.get(str(x), "#95a5a6"))
 
-    # Usar text="DuracionTexto" para que cada segmento reciba su propio texto
     fig = px.timeline(
         df,
         x_start="Hora Inicio",
@@ -130,7 +150,7 @@ if file:
         height=800,
 
         title=dict(
-            text="<b style='color:black; font-size:30px'>ESTADO DE EQUIPOS - OPERACIÓN</b>",
+            text=titulo,
             x=0.5,
             xanchor="center",
             y=0.95
@@ -232,17 +252,42 @@ if file:
 
     st.plotly_chart(fig, use_container_width=True)
 
-    # =====================================================
-    # METRAJE ACUMULADO
-    # =====================================================
-    st.markdown(
-        "<div style='margin-top:-20px; margin-bottom:-120px;'>"
-        "<h2 style='text-align:center; color:black; font-weight:700;'>"
-        "AVANCE"
-        "</h2>"
-        "</div>",
-        unsafe_allow_html=True
+    df_sorted = df.sort_values(["Equipo", "Hora Fin"])
+
+    df_estado_actual = (
+        df_sorted
+        .groupby("Equipo")
+        .tail(1)
+        [["Equipo", "Estado", "Ubicacion"]]
+        .rename(columns={"Ubicacion": "Ubicación / Frente"})
     )
+
+    df_prod = df[df["Estado"] == "Operativo"].copy()
+    df_prod["Minutos"] = df_prod["Duracion"].dt.total_seconds() / 60
+
+    df_prod_acum = (
+        df_prod
+        .groupby("Equipo")["Minutos"]
+        .sum()
+        .reset_index()
+    )
+
+    def minutos_a_hhmm(mins):
+        h = int(mins // 60)
+        m = int(mins % 60)
+        return f"{h:02d}:{m:02d}"
+
+    df_prod_acum["Producción acumulada"] = df_prod_acum["Minutos"].apply(minutos_a_hhmm)
+
+    df_resumen = df_estado_actual.merge(
+        df_prod_acum[["Equipo", "Producción acumulada"]],
+        on="Equipo",
+        how="left"
+    )
+
+    df_resumen["Producción acumulada"] = df_resumen["Producción acumulada"].fillna("00:00")
+
+    df_resumen = df_resumen.sort_values("Equipo").reset_index(drop=True)
 
     df_op = df[df["Estado"] == "Operativo"].copy()
     df_op["Horas"] = df_op["Duracion"].dt.total_seconds() / 3600
@@ -260,11 +305,6 @@ if file:
 
     horas_por_equipo["Metraje acumulado (m)"] = horas_por_equipo.apply(calcular_metraje, axis=1)
 
-    # =====================================================
-    # ACUMULADOS TOTALES DE METRAJE
-    # =====================================================
-
-    # Separar DTH y RTR
     df_dth = horas_por_equipo[
         ~horas_por_equipo["Equipo"].isin(["TD091", "TD092"])
     ]
@@ -273,56 +313,11 @@ if file:
         horas_por_equipo["Equipo"].isin(["TD091", "TD092"])
     ]
 
-    # Calcular acumulados
     x_metros_dth = df_dth["Metraje acumulado (m)"].sum()
     y_metros_rtr = df_rtr["Metraje acumulado (m)"].sum()
 
-    # =====================================================
-    # MOSTRAR RESULTADOS EN GRANDE
-    # =====================================================
-    st.markdown("<hr>", unsafe_allow_html=True)
-
-    col1, col2 = st.columns(2)
-    with col1:
-        st.markdown(
-            f"""
-            <div style="text-align:center;">
-                <h1 style="
-                    font-size:60px;
-                    color:black;
-                    margin-bottom:-20px;
-                    margin-top:-60px;
-                ">
-            {x_metros_dth:,.0f}</h1>
-                <h3 style="color:black;">METROS PERFORADOS DTH</h3>
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
-
-    with col2:
-        st.markdown(
-            f"""
-            <div style="text-align:center;">
-                <h1 style="
-                    font-size:60px;
-                    color:black;
-                    margin-bottom:-20px;
-                    margin-top:-60px;
-                ">
-                {y_metros_rtr:,.0f}</h1>
-                <h3 style="color:black;">METROS PERFORADOS RTR</h3>
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
-    # =====================================================
-    # OPERATIVIDAD Y PROYECCIÓN POR EQUIPO (CORRECTO)
-    # =====================================================
-
     HORAS_TURNO = 12
 
-    # Duraciones por equipo
     df_eq = (
         df.groupby(["Equipo", "Estado"])["Duracion"]
         .sum()
@@ -331,7 +326,6 @@ if file:
 
     df_eq["Horas"] = df_eq["Duracion"].dt.total_seconds() / 3600
 
-    # Total y operativo por equipo
     df_total = (
         df_eq.groupby("Equipo")["Horas"]
         .sum()
@@ -345,16 +339,10 @@ if file:
         .reset_index(name="Horas_operativas")
     )
 
-    # Unir
     df_proj = df_total.merge(df_op, on="Equipo", how="left")
     df_proj["Horas_operativas"] = df_proj["Horas_operativas"].fillna(0)
 
-    # % operatividad por equipo
     df_proj["Operatividad"] = df_proj["Horas_operativas"] / df_proj["Horas_totales"]
-
-    # =====================================================
-    # % OPERATIVIDAD DE TODA LA FLOTA
-    # =====================================================
 
     horas_totales_flota = df_proj["Horas_totales"].sum()
     horas_operativas_flota = df_proj["Horas_operativas"].sum()
@@ -364,20 +352,16 @@ if file:
         if horas_totales_flota > 0 else 0
     )
 
-    # Como el criterio es mantener la misma operatividad al cierre
     porc_operatividad_proyectada = porc_operatividad_flota
 
     df_proj["Operatividad Flota (%)"] = porc_operatividad_flota * 100
 
-    # Horas operativas proyectadas al cierre
     df_proj["Horas_proj"] = df_proj["Operatividad"] * HORAS_TURNO
 
-    # Metraje proyectado por equipo
     def metraje_proyectado(row):
         eq = row["Equipo"]
         h = row["Horas_proj"]
 
-        # Si no hay operatividad proyectada → 0 metros
         if h <= 0:
             return 0
 
@@ -390,10 +374,6 @@ if file:
 
     df_proj["Metraje_proyectado (m)"] = df_proj.apply(metraje_proyectado, axis=1)
 
-    # =====================================================
-    # ACUMULADOS DTH / RTR
-    # =====================================================
-
     metraje_dth_proj = df_proj[
         ~df_proj["Equipo"].isin(["TD091", "TD092"])
     ]["Metraje_proyectado (m)"].sum()
@@ -402,93 +382,216 @@ if file:
         df_proj["Equipo"].isin(["TD091", "TD092"])
     ]["Metraje_proyectado (m)"].sum()
 
-    # =====================================================
-    # VISUAL EJECUTIVO
-    # =====================================================
+    def resaltar_rtr(row):
+        if row["Equipo"] in ["TD091", "TD092"]:
+            return ["background-color: #00B050"] * len(row)  # azul suave RTR
+        return [""] * len(row)
 
-    st.markdown("<hr>", unsafe_allow_html=True)
-    st.markdown(
-        "<div style='margin-top:-40px; margin-bottom:-80px;'>"
-        "<h2 style='text-align:center; color:black; font-weight:700;'>"
-        "PROYECCIÓN"
-        "</h2>",
-        unsafe_allow_html=True
+    df_styled = df_resumen.style.apply(resaltar_rtr, axis=1)
+
+    df["Horas"] = df["Duracion"].dt.total_seconds() / 3600
+
+    df_cat = (
+        df.groupby(["Equipo", "Categoria"])["Horas"]
+        .sum()
+        .reset_index()
     )
 
-    col1, col2, col3 = st.columns(3)
+    df_pivot = df_cat.pivot_table(
+        index="Equipo",
+        columns="Categoria",
+        values="Horas",
+        fill_value=0
+    ).reset_index()
+
+    df_pivot["DM"] = (
+    df_pivot.get("Tiempo de Producción", 0) /
+    (
+        df_pivot.get("Tiempo de Producción", 0) +
+        df_pivot.get("PERDIDA DE EQUIPO PLANIFICADA", 0) +
+        df_pivot.get("PERDIDA DE EQUIPO NO PLANIFICADA", 0)
+    )
+    )
+
+    df_pivot["DM"] = df_pivot["DM"].fillna(0)
+
+    df_pivot["UE"] = (
+    df_pivot.get("Tiempo de Producción", 0) /
+    (
+        df_pivot.get("Tiempo de Producción", 0) +
+        df_pivot.get("Tiempo de NO Producción", 0) +
+        df_pivot.get("Retraso Operativo Planificado", 0) +
+        df_pivot.get("Retraso Operativo NO Planificado", 0)
+    )
+    )
+
+    df_pivot["UE"] = df_pivot["UE"].fillna(0)
+
+    df_pivot["Tipo"] = df_pivot["Equipo"].apply(
+    lambda x: "RTR" if x in ["TD091", "TD092"] else "DTH"
+    )
+
+    promedios = (
+        df_pivot.groupby("Tipo")[["DM", "UE"]]
+        .mean()
+        .reset_index()
+    )
+
+    st.markdown("<hr>", unsafe_allow_html=True)
+    col1, col2 = st.columns([1.1, 1])
 
     with col1:
         st.markdown(
-            f"""
-            <div style="text-align:center;">
-                <h1 style="
-                    font-size:60px;
-                    color:#1F4ED8;
-                    font-weight:700;
-                ">
-                    {metraje_dth_proj:,.0f}
-                </h1>
-                <h3 style="color:black;">
-                    METROS PROYECTADOS DTH
-                </h3>
-            </div>
-            """,
+            "<div style='margin-top:-80px; margin-bottom:-5px;'>"
+            "<h2 style='text-align:center; color:black; font-weight:700;'>"
+            "ESTADO ACTUAL POR EQUIPO"
+            "</h2>",
             unsafe_allow_html=True
+        )
+
+        st.dataframe(
+            df_styled,
+            use_container_width=True,
+            hide_index=True,
+            height=35 * (len(df_resumen) + 1)
         )
 
     with col2:
         st.markdown(
-            f"""
-            <div style="text-align:center;">
-                <h2 style="
-                    color:#21C063;
-                    font-size:60px;
-                    font-weight:700;
-                    margin-bottom:0px;
-                ">
-                    {porc_operatividad_proyectada*100:.1f}%
-                </h2>
-                <h3 style="color:black;">
-                    OPERATIVIDAD
-                </h3>
-            </div>
+            "<div style='margin-top:-80px; margin-bottom:-5px;'>"
+            "<h2 style='text-align:center; color:black; font-weight:700;'>"
+            "AVANCE"
+            "</h2>",
+            unsafe_allow_html=True
+        )
+
+        a1, a2 = st.columns(2)
+
+        with a1:
+            st.markdown(
+                f"""
+                <div style="text-align:center;">
+                    <h1 style="
+                        font-size:60px;
+                        color:black;
+                        margin-bottom:-20px;
+                        margin-top:-60px;
+                    ">
+                {x_metros_dth:,.0f}</h1>
+                    <h4 style="color:black;">METROS PERFORADOS DTH</h4>
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
+
+        with a2:
+            st.markdown(
+                f"""
+                <div style="text-align:center;">
+                    <h1 style="
+                        font-size:60px;
+                        color:black;
+                        margin-bottom:-20px;
+                        margin-top:-60px;
+                    ">
+                    {y_metros_rtr:,.0f}</h1>
+                    <h4 style="color:black;">METROS PERFORADOS RTR</h4>
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
+
+        st.markdown("<hr>", unsafe_allow_html=True)
+
+        st.markdown(
+            "<div style='margin-top:-80px; margin-bottom:-5px;'>"
+            "<h2 style='text-align:center; color:black; font-weight:700;'>PROYECCIÓN</h2>",
+            unsafe_allow_html=True
+        )
+
+        p1, p2 = st.columns(2)
+
+        with p1:
+            st.markdown(
+                f"""
+                <div style="text-align:center;">
+                    <h1 style="
+                        font-size:60px;
+                        color:#1F4ED8;
+                        margin-bottom:-20px;
+                        margin-top:-60px;
+                    ">
+                        {metraje_dth_proj:,.0f}
+                    </h1>
+                    <h4 style="color:black;">
+                        METROS PROYECTADOS DTH
+                    </h4>
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
+
+        with p2:
+            st.markdown(
+                f"""
+                <div style="text-align:center;">
+                    <h1 style="
+                        font-size:60px;
+                        color:#1F4ED8;
+                        margin-bottom:-20px;
+                        margin-top:-60px;
+                    ">
+                        {metraje_rtr_proj:,.0f}</h1>
+                    <h4 style="color:black;">
+                        METROS PROYECTADOS RTR
+                    </h4>
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
+        st.markdown(
+            """
+            <div style="
+                width:80%;
+                height:1px;
+                margin:25px auto 20px auto;
+                background: linear-gradient(
+                    to right,
+                    transparent,
+                    #B0B0B0,
+                    transparent
+                );
+            "></div>
             """,
             unsafe_allow_html=True
         )
 
-    with col3:
         st.markdown(
-            f"""
-            <div style="text-align:center;">
-                <h1 style="
-                    font-size:60px;
-                    color:#1F4ED8;
-                    font-weight:700;
-                ">
-                    {metraje_rtr_proj:,.0f}</h1>
-                <h3 style="color:black;">
-                    METROS PROYECTADOS RTR
-                </h3>
-            </div>
-            """,
+            "<h4 style='text-align:center; color:black; font-weight:700;'>"
+            "DISPONILIDAD MECANICA Y UTILIZACION EFECTIVA"
+            "</h4>",
             unsafe_allow_html=True
+        )
+        st.dataframe(
+            promedios.assign(
+                DM=lambda x: (x["DM"] * 100).round(1).astype(str) + "%",
+                UE=lambda x: (x["UE"] * 100).round(1).astype(str) + "%",
+            ),
+            use_container_width=True,
+            hide_index=True
         )
 
     col1, col2 = st.columns(2)
     with col1:
-        # Filtrar solo filas con demoras
+
         df_demora = df[df["Estado"] == "Demora"].copy()
 
-        # Convertir duración a minutos directamente desde timedelta
         df_demora["Duracion_min"] = df_demora["Duracion"].dt.total_seconds() / 60
 
-        # Agrupar por descripcion y sumar duración
         df_pie = df_demora.groupby("Descripcion")["Duracion_min"].sum().reset_index()
 
-        # Calcular porcentaje
         df_pie["Porcentaje"] = (df_pie["Duracion_min"] / df_pie["Duracion_min"].sum()) * 100
 
-        # Crear gráfico de pastel
         fig_pie = px.pie(
             df_pie,
             names="Descripcion",
@@ -522,14 +625,10 @@ if file:
         )
 
     with col2:
-        # --- Pie chart por Estado con HH:MM y porcentaje dentro ---
         df_estado = df.copy()
-        df_estado["Duracion_min"] = df_estado["Duracion"].dt.total_seconds() / 60  # convertir a minutos
-
-        # Agrupar por Estado y sumar duración
+        df_estado["Duracion_min"] = df_estado["Duracion"].dt.total_seconds() / 60 
         df_pie_estado = df_estado.groupby("Estado")["Duracion_min"].sum().reset_index()
 
-        # Función para convertir minutos a HH:MM
         def min_a_hhmm(minutos):
             h = int(minutos // 60)
             m = int(minutos % 60)
@@ -537,10 +636,8 @@ if file:
 
         df_pie_estado["Duracion_HHMM"] = df_pie_estado["Duracion_min"].apply(min_a_hhmm)
 
-        # Calcular porcentaje
         df_pie_estado["Porcentaje"] = (df_pie_estado["Duracion_min"] / df_pie_estado["Duracion_min"].sum()) * 100
 
-        # Crear gráfico de pastel
         fig_pie_estado = px.pie(
             df_pie_estado,
             names="Estado",
@@ -569,7 +666,6 @@ if file:
         )
 
         st.plotly_chart(fig_pie_estado, use_container_width=True)
-        
         st.markdown(
             "<h3 style='text-align:center; font-weight:700; color:black;'>"
             "DISTRIBUCIÓN POR ESTADO"
