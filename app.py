@@ -71,19 +71,19 @@ def convertir_hora(x):
 # FORMULAS DE METRAJE
 # =====================================================
 FORMULAS_METRAJE = {
-    "TD011": {"a": 23.67, "b": 9.71},
-    "TD012": {"a": 25.18, "b": 6.81},
-    "TD030": {"a": 30.28, "b": 1.59},
-    "TD031": {"a": 29.96, "b": -0.31},
-    "TD072": {"a": 29.73, "b": 1.19},
-    "TD073": {"a": 30.22, "b": 1.93},
-    "TD074": {"a": 28.35, "b": 2.24},
-    "TD076": {"a": 26.86, "b": 3.30},
-    "TD077": {"a": 30.03, "b": 8.14},
-    "TD078": {"a": 26.06, "b": 5.49},
-    "TD079": {"a": 32.05, "b": 1.07},
-    "TD091": {"a": 22.45, "b": 31.79},
-    "TD092": {"a": 23.92, "b": 20.37},
+    "TD011": {"a": 23.67*0.90, "b": 9.71},
+    "TD012": {"a": 25.18*0.90, "b": 6.81},
+    "TD030": {"a": 30.28*0.90, "b": 1.59},
+    "TD031": {"a": 29.96*0.90, "b": -0.31},
+    "TD072": {"a": 29.73*0.90, "b": 1.19},
+    "TD073": {"a": 30.22*0.90, "b": 1.93},
+    "TD074": {"a": 28.35*0.90, "b": 2.24},
+    "TD076": {"a": 26.86*0.90, "b": 3.30},
+    "TD077": {"a": 30.03*0.90, "b": 8.14},
+    "TD078": {"a": 26.06*0.90, "b": 5.49},
+    "TD079": {"a": 32.05*0.90, "b": 1.07},
+    "TD091": {"a": 22.45*0.90, "b": 31.79},
+    "TD092": {"a": 23.92*0.90, "b": 20.37},
 }
 
 if file:
@@ -119,11 +119,31 @@ if file:
 
     df["Color"] = df["Estado"].apply(lambda x: colores_estado.get(str(x), "#95a5a6"))
 
+    def formatear_equipo(row):
+        eq = row["Equipo"]
+        ub = str(row["Ubicacion"]).strip()
+
+        # tomar solo la primera palabra
+        ub_base = ub.split()[0]
+
+        if ub_base == "Ferrobamba":
+            return f"<b>{eq}</b>"
+        elif ub_base == "Chalcobamba":
+            return f"<b style='color:#1F4ED8'>{eq}</b>"
+        elif ub_base == "Fuera":
+            return f"<b style='color:#00B0F0'>{eq}</b>"
+        elif ub_base == "Proyecto":
+            return f"<b style='color:#F77C00'>{eq}</b>"
+        else:
+            return eq
+
+    df["Equipo_label"] = df.apply(formatear_equipo, axis=1)
+
     fig = px.timeline(
         df,
         x_start="Hora Inicio",
         x_end="Hora Fin",
-        y="Equipo",
+        y="Equipo_label",
         color="Estado",
         text="DuracionTexto",
         color_discrete_map=colores_estado,
@@ -131,12 +151,12 @@ if file:
     )
 
     fig.update_yaxes(
-        title="",
         tickfont=dict(size=13),
         type="category",
         categoryorder="array",
-        categoryarray=df["Equipo"].tolist(),
-        autorange="reversed"
+        categoryarray=df["Equipo_label"].drop_duplicates().tolist(),
+        autorange="reversed",
+        title=""
     )
     fig.update_xaxes(
         range=[
@@ -225,7 +245,7 @@ if file:
 
         fig.add_annotation(
             x=row["Hora Inicio"] + (row["Hora Fin"] - row["Hora Inicio"]) / 2,
-            y=row["Equipo"],
+            y=row["Equipo_label"],
             text=desc_str,
             showarrow=False,
             yshift=22,
@@ -238,7 +258,7 @@ if file:
     fig.update_xaxes(dtick=1800000)
 
     hora_actual = hora_inicio_global
-    equipos_unicos = len(df["Equipo"].unique())
+    equipos_unicos = len(df["Equipo_label"].unique())
 
     while hora_actual <= hora_fin_global:
         fig.add_shape(
