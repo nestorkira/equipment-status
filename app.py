@@ -8,12 +8,12 @@ import base64
 now = datetime.datetime.now()
 hora = now.hour
 
-if 2 <= hora < 18:
+if 12 <= hora < 5:
     turno = "T/D"
     fecha_operacion = now
 else:
     turno = "T/N"
-    if hora < 2:
+    if hora < 12:
         fecha_operacion = now - datetime.timedelta(days=1)
     else:
         fecha_operacion = now
@@ -22,9 +22,9 @@ fecha_str = fecha_operacion.strftime("%d-%m")
 
 mostrar_proyeccion = False
 
-if turno == "T/D" and hora >= 7:
+if turno == "T/D" and hora >= 17:
     mostrar_proyeccion = True
-elif turno == "T/N" and hora >= 19:
+elif turno == "T/N" and hora >= 5:
     mostrar_proyeccion = True
 
 titulo = (
@@ -717,4 +717,3 @@ if file:
             "</h3>",
             unsafe_allow_html=True
         )
-
