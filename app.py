@@ -8,7 +8,7 @@ import base64
 now = datetime.datetime.now()
 hora = now.hour
 
-if 7 <= hora < 19:
+if 7 <= hora < 23:
     turno = "T/D"
     fecha_operacion = now
 else:
@@ -19,6 +19,13 @@ else:
         fecha_operacion = now
 
 fecha_str = fecha_operacion.strftime("%d-%m")
+
+mostrar_proyeccion = False
+
+if turno == "T/D" and hora >= 12:
+    mostrar_proyeccion = True
+elif turno == "T/N" and hora >= 24:
+    mostrar_proyeccion = True
 
 titulo = (
     f"<b style='color:black; font-size:30px'>"
@@ -71,17 +78,17 @@ def convertir_hora(x):
 # FORMULAS DE METRAJE
 # =====================================================
 FORMULAS_METRAJE = {
-    "TD011": {"a": 23.67*0.90, "b": 9.71},
-    "TD012": {"a": 25.18*0.90, "b": 6.81},
-    "TD030": {"a": 30.28*0.90, "b": 1.59},
-    "TD031": {"a": 29.96*0.90, "b": -0.31},
-    "TD072": {"a": 29.73*0.90, "b": 1.19},
-    "TD073": {"a": 30.22*0.90, "b": 1.93},
-    "TD074": {"a": 28.35*0.90, "b": 2.24},
-    "TD076": {"a": 26.86*0.90, "b": 3.30},
-    "TD077": {"a": 30.03*0.90, "b": 8.14},
-    "TD078": {"a": 26.06*0.90, "b": 5.49},
-    "TD079": {"a": 32.05*0.90, "b": 1.07},
+    "TD011": {"a": 23.67*0.95, "b": 9.71},
+    "TD012": {"a": 25.18*0.95, "b": 6.81},
+    "TD030": {"a": 30.28*0.95, "b": 1.59},
+    "TD031": {"a": 29.96*0.95, "b": -0.31},
+    "TD072": {"a": 29.73*0.95, "b": 1.19},
+    "TD073": {"a": 30.22*0.95, "b": 1.93},
+    "TD074": {"a": 28.35*0.95, "b": 2.24},
+    "TD076": {"a": 26.86*0.95, "b": 3.30},
+    "TD077": {"a": 30.03*0.95, "b": 8.14},
+    "TD078": {"a": 26.06*0.95, "b": 5.49},
+    "TD079": {"a": 32.05*0.95, "b": 1.07},
     "TD091": {"a": 22.45*0.90, "b": 31.79},
     "TD092": {"a": 23.92*0.90, "b": 20.37},
 }
@@ -123,17 +130,12 @@ if file:
         eq = row["Equipo"]
         ub = str(row["Ubicacion"]).strip()
 
-        # tomar solo la primera palabra
         ub_base = ub.split()[0]
 
         if ub_base == "Ferrobamba":
-            return f"<b>{eq}</b>"
+            return f"<b style='color:#4085DC'>{eq}</b>"
         elif ub_base == "Chalcobamba":
-            return f"<b style='color:#1F4ED8'>{eq}</b>"
-        elif ub_base == "Fuera":
-            return f"<b style='color:#00B0F0'>{eq}</b>"
-        elif ub_base == "Proyecto":
-            return f"<b style='color:#F77C00'>{eq}</b>"
+            return f"<b style='color:#F37249'>{eq}</b>"
         else:
             return eq
 
@@ -218,6 +220,22 @@ if file:
             title=dict(text=""),
             font=dict(color="black", size=20)
         )
+    )
+
+    fig.update_layout(
+    annotations=[
+        dict(
+            text="🔷 Ferrobamba&nbsp;&nbsp;&nbsp;&nbsp;🔶 Chalcobamba",
+            x=0.475,
+            y=1.075,
+            xref="paper",
+            yref="paper",
+            showarrow=False,
+            font=dict(size=16, color="black"),
+            xanchor="center",
+            align="center"
+            )
+        ]
     )
 
     fig.update_traces(
@@ -404,7 +422,7 @@ if file:
 
     def resaltar_rtr(row):
         if row["Equipo"] in ["TD091", "TD092"]:
-            return ["background-color: #00B050"] * len(row)  # azul suave RTR
+            return ["background-color: #00B050"] * len(row)
         return [""] * len(row)
 
     df_styled = df_resumen.style.apply(resaltar_rtr, axis=1)
@@ -523,6 +541,13 @@ if file:
 
         st.markdown("<hr>", unsafe_allow_html=True)
 
+        if mostrar_proyeccion:
+            dth_proj_txt = f"{metraje_dth_proj:,.0f}"
+            rtr_proj_txt = f"{metraje_rtr_proj:,.0f}"
+        else:
+            dth_proj_txt = "<span style='font-size:32px;'>⏳</span>"
+            rtr_proj_txt = "<span style='font-size:32px;'>⏳</span>"
+
         st.markdown(
             "<div style='margin-top:-80px; margin-bottom:-5px;'>"
             "<h2 style='text-align:center; color:black; font-weight:700;'>PROYECCIÓN</h2>",
@@ -541,7 +566,7 @@ if file:
                         margin-bottom:-20px;
                         margin-top:-60px;
                     ">
-                        {metraje_dth_proj:,.0f}
+                        {dth_proj_txt}
                     </h1>
                     <h4 style="color:black;">
                         METROS PROYECTADOS DTH
@@ -561,7 +586,7 @@ if file:
                         margin-bottom:-20px;
                         margin-top:-60px;
                     ">
-                        {metraje_rtr_proj:,.0f}</h1>
+                        {rtr_proj_txt}</h1>
                     <h4 style="color:black;">
                         METROS PROYECTADOS RTR
                     </h4>
