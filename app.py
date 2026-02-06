@@ -1,20 +1,20 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
-from datetime import datetime, timedelta
-import datetime
+from datetime import datetime, timedelta, time, date
 import base64
 
-now = datetime.datetime.now()
+### now = datetime(2026, 2, 6, 8, 35)   # 06 a las 00:35 am
+now = datetime.utcnow() - timedelta(hours=5)
 hora = now.hour
 
-if 12 <= hora < 5:
+if 7 <= hora < 19:
     turno = "T/D"
     fecha_operacion = now
 else:
     turno = "T/N"
-    if hora < 12:
-        fecha_operacion = now - datetime.timedelta(days=1)
+    if hora < 7:
+        fecha_operacion = now - timedelta(days=1)
     else:
         fecha_operacion = now
 
@@ -22,9 +22,9 @@ fecha_str = fecha_operacion.strftime("%d-%m")
 
 mostrar_proyeccion = False
 
-if turno == "T/D" and hora >= 17:
+if turno == "T/D" and hora >= 12:
     mostrar_proyeccion = True
-elif turno == "T/N" and hora >= 5:
+elif turno == "T/N" and hora >= 0:
     mostrar_proyeccion = True
 
 titulo = (
@@ -67,8 +67,8 @@ st.write("Sube tu archivo Excel")
 file = st.file_uploader(" ", type=["xlsx"])
 
 def convertir_hora(x):
-    if isinstance(x, datetime.time):
-        return datetime.datetime.combine(datetime.date.today(), x)
+    if isinstance(x, time):
+        return datetime.combine(date.today(), x)
     try:
         return pd.to_datetime(x)
     except:
@@ -114,8 +114,8 @@ if file:
 
     df = df.sort_values(["Equipo", "Hora Inicio"]).reset_index(drop=True)
 
-    hora_inicio_global = datetime.datetime.combine(datetime.date.today(), datetime.time(6, 30))
-    hora_fin_global = datetime.datetime.combine(datetime.date.today(), datetime.time(18, 30))
+    hora_inicio_global = datetime.combine(date.today(), time(6, 30))
+    hora_fin_global   = datetime.combine(date.today(), time(18, 30))
 
     colores_estado = {
         "Operativo": "#00B050",
@@ -163,7 +163,7 @@ if file:
     fig.update_xaxes(
         range=[
             hora_inicio_global,
-            hora_fin_global + datetime.timedelta(minutes=10)
+            hora_fin_global + timedelta(minutes=10)
         ],
         dtick=1800000
     )
@@ -286,7 +286,7 @@ if file:
             line=dict(color="lightgray", width=1, dash="dot"),
             layer="below"
         )
-        hora_actual += datetime.timedelta(hours=0.5)
+        hora_actual += timedelta(hours=0.5)
 
     st.plotly_chart(fig, use_container_width=True)
 
