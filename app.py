@@ -28,7 +28,7 @@ elif turno == "T/N" and hora >= 0:
     mostrar_proyeccion = True
 
 titulo = (
-    f"<b style='color:black; font-size:30px'>"
+    f"<b style='color:black; font-size:30px';font-size:10px;>"
     f"ESTADO DE EQUIPOS - OPERACIÓN {fecha_str} {turno}"
     f"</b>"
 )
@@ -61,9 +61,6 @@ footer {visibility: hidden;}
 </style>
 """, unsafe_allow_html=True)
 
-st.markdown("<h1 style='text-align:center; color:black;'>Gantt Operacional por Equipo</h1>", unsafe_allow_html=True)
-st.write("Sube tu archivo Excel")
-
 file = st.file_uploader(" ", type=["xlsx"])
 
 def convertir_hora(x):
@@ -78,19 +75,19 @@ def convertir_hora(x):
 # FORMULAS DE METRAJE
 # =====================================================
 FORMULAS_METRAJE = {
-    "TD011": {"a": 23.67*0.95, "b": 9.71},
-    "TD012": {"a": 25.18*0.95, "b": 6.81},
-    "TD030": {"a": 30.28*0.95, "b": 1.59},
-    "TD031": {"a": 29.96*0.95, "b": -0.31},
-    "TD072": {"a": 29.73*0.95, "b": 1.19},
-    "TD073": {"a": 30.22*0.95, "b": 1.93},
-    "TD074": {"a": 28.35*0.95, "b": 2.24},
-    "TD076": {"a": 26.86*0.95, "b": 3.30},
-    "TD077": {"a": 30.03*0.95, "b": 8.14},
-    "TD078": {"a": 26.06*0.95, "b": 5.49},
-    "TD079": {"a": 32.05*0.95, "b": 1.07},
-    "TD091": {"a": 22.45*0.90, "b": 31.79},
-    "TD092": {"a": 23.92*0.90, "b": 20.37},
+    "TD011": {"a": 23.67, "b": 9.71},
+    "TD012": {"a": 25.18, "b": 6.81},
+    "TD030": {"a": 30.28, "b": 1.59},
+    "TD031": {"a": 29.96, "b": -0.31},
+    "TD072": {"a": 29.73, "b": 1.19},
+    "TD073": {"a": 30.22, "b": 1.93},
+    "TD074": {"a": 28.35, "b": 2.24},
+    "TD076": {"a": 26.86, "b": 3.30},
+    "TD077": {"a": 30.03, "b": 8.14},
+    "TD078": {"a": 26.06, "b": 5.49},
+    "TD079": {"a": 32.05, "b": 1.07},
+    "TD091": {"a": 22.45, "b": 31.79},
+    "TD092": {"a": 23.92, "b": 20.37},
 }
 
 if file:
@@ -165,23 +162,25 @@ if file:
             hora_inicio_global,
             hora_fin_global + timedelta(minutes=10)
         ],
-        dtick=1800000
+        dtick=3600000
     )
 
+    altura = 250 * len(df["Equipo_label"].unique())
+
     fig.update_layout(
-        height=800,
+        height=altura,
 
         title=dict(
             text=titulo,
             x=0.5,
             xanchor="center",
-            y=0.95
+            y=0.99
         ),
 
         plot_bgcolor="#ffffff",
         paper_bgcolor="#ffffff",
         bargap=0,
-        bargroupgap=0.55,
+        bargroupgap=0.65,
         font=dict(size=13, color="black"),
 
         margin=dict(t=160),
@@ -192,7 +191,7 @@ if file:
                 xref="paper",
                 yref="paper",
                 x=-0.025,
-                y=1.20,
+                y=1.05,
                 sizex=0.15,
                 sizey=0.15,
                 xanchor="left",
@@ -203,7 +202,7 @@ if file:
                 xref="paper",
                 yref="paper",
                 x=0.99,
-                y=1.20,
+                y=1.05,
                 sizex=0.15,
                 sizey=0.15,
                 xanchor="right",
@@ -214,7 +213,7 @@ if file:
         legend=dict(
             orientation="h",
             yanchor="top",
-            y=1.15,
+            y=1.04,
             xanchor="center",
             x=0.475,
             title=dict(text=""),
@@ -227,7 +226,7 @@ if file:
         dict(
             text="🔷 Ferrobamba&nbsp;&nbsp;&nbsp;&nbsp;🔶 Chalcobamba",
             x=0.475,
-            y=1.075,
+            y=1.025,
             xref="paper",
             yref="paper",
             showarrow=False,
@@ -243,7 +242,7 @@ if file:
         marker_line_width=0.5,
         textposition="inside",
         insidetextanchor="middle",
-        textfont=dict(color="black", size=11),
+        textfont=dict(color="black", size=17.5),
     )
 
     for i, row in df.iterrows():
@@ -252,6 +251,13 @@ if file:
         if isinstance(desc, float) and pd.isna(desc):
             continue
         if str(desc).strip() == "":
+            continue
+
+        # 👉 Calcular duración en minutos
+        duracion = (row["Hora Fin"] - row["Hora Inicio"]).total_seconds() / 60
+
+        # 👉 Mostrar texto solo si duración >= 20 min
+        if duracion <= 20:
             continue
 
         desc_str = str(desc).strip()
@@ -266,14 +272,14 @@ if file:
             y=row["Equipo_label"],
             text=desc_str,
             showarrow=False,
-            yshift=22,
-            font=dict(size=10, color="black")
+            yshift=70,
+            font=dict(size=20, color="black")
         )
 
-    fig.update_xaxes(title_font=dict(color="black"), tickfont=dict(color="black"))
-    fig.update_yaxes(title_font=dict(color="black"), tickfont=dict(color="black"))
+    fig.update_xaxes(title_font=dict(color="black"), tickfont=dict(color="black", size=16))
+    fig.update_yaxes(title_font=dict(color="black"), tickfont=dict(color="black", size=20))
 
-    fig.update_xaxes(dtick=1800000)
+    fig.update_xaxes(dtick=3600000)
 
     hora_actual = hora_inicio_global
     equipos_unicos = len(df["Equipo_label"].unique())
@@ -288,8 +294,8 @@ if file:
         )
         hora_actual += timedelta(hours=0.5)
 
-    st.plotly_chart(fig, use_container_width=True)
-
+    st.plotly_chart(fig, use_container_width=True, key="gantt_1")
+    
     df_sorted = df.sort_values(["Equipo", "Hora Fin"])
 
     df_estado_actual = (
@@ -338,7 +344,7 @@ if file:
         if eq in FORMULAS_METRAJE:
             a = FORMULAS_METRAJE[eq]["a"]
             b = FORMULAS_METRAJE[eq]["b"]
-            return a * h + b
+            return (a * h + b)*0.8
         return 0
 
     horas_por_equipo["Metraje acumulado (m)"] = horas_por_equipo.apply(calcular_metraje, axis=1)
@@ -478,7 +484,7 @@ if file:
     st.markdown("<hr>", unsafe_allow_html=True)
     col1, col2 = st.columns([1.1, 1])
 
-    with col1:
+    with col1:               
         st.markdown(
             "<div style='margin-top:-80px; margin-bottom:-5px;'>"
             "<h2 style='text-align:center; color:black; font-weight:700;'>"
@@ -486,7 +492,7 @@ if file:
             "</h2>",
             unsafe_allow_html=True
         )
-
+        
         st.dataframe(
             df_styled,
             use_container_width=True,
@@ -495,6 +501,7 @@ if file:
         )
 
     with col2:
+
         st.markdown(
             "<div style='margin-top:-80px; margin-bottom:-5px;'>"
             "<h2 style='text-align:center; color:black; font-weight:700;'>"
@@ -549,10 +556,10 @@ if file:
             rtr_proj_txt = "<span style='font-size:32px;'>⏳</span>"
 
         st.markdown(
-            "<div style='margin-top:-80px; margin-bottom:-5px;'>"
-            "<h2 style='text-align:center; color:black; font-weight:700;'>PROYECCIÓN</h2>",
-            unsafe_allow_html=True
-        )
+                "<div style='margin-top:-80px; margin-bottom:-5px;'>"
+                "<h2 style='text-align:center; color:black; font-weight:700;'>PROYECCIÓN</h2>",
+                unsafe_allow_html=True
+            )
 
         p1, p2 = st.columns(2)
 
@@ -628,7 +635,6 @@ if file:
 
     col1, col2 = st.columns(2)
     with col1:
-
         df_demora = df[df["Estado"] == "Demora"].copy()
 
         df_demora["Duracion_min"] = df_demora["Duracion"].dt.total_seconds() / 60
