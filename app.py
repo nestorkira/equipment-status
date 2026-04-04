@@ -449,11 +449,20 @@ if file:
     ).reset_index()
 
     df_pivot["DM"] = (
-    df_pivot.get("Tiempo de Producción", 0) /
+    (
+        df_pivot.get("Tiempo de Producción", 0) + 
+        df_pivot.get("Tiempo de NO Producción", 0) + 
+        df_pivot.get("Retraso Operativo Planificado", 0) + 
+        df_pivot.get("Retraso Operativo NO Planificado", 0) 
+    )/
     (
         df_pivot.get("Tiempo de Producción", 0) +
+        df_pivot.get("Tiempo de NO Producción", 0) +
+        df_pivot.get("Retraso Operativo Planificado", 0) +
+        df_pivot.get("Retraso Operativo NO Planificado", 0) +
         df_pivot.get("PERDIDA DE EQUIPO PLANIFICADA", 0) +
-        df_pivot.get("PERDIDA DE EQUIPO NO PLANIFICADA", 0)
+        df_pivot.get("PERDIDA DE EQUIPO NO PLANIFICADA", 0) + 
+        df_pivot.get("ECT", 0)
     )
     )
 
