@@ -92,8 +92,32 @@ FORMULAS_METRAJE = {
     "TD092": {"a": 23.92*0.80, "b": 20.37},
 }
 
+# ==========================================
+# ORDEN PERSONALIZADO DE EQUIPOS
+# ==========================================
+ORDEN_EQUIPOS = [
+    "TD011",
+    "TD012",
+    "TD030",
+    "TD031",
+    "TD072",
+    "TD073",
+    "TD074",
+    "TD076",
+    "TD077",
+    "TD079",
+    "TD091",
+    "TD092",
+    "TD078",
+    "TD080",
+    "TD081"
+]
+
 if file:
     df = pd.read_excel(file)
+
+    orden_dict = {eq: i for i, eq in enumerate(ORDEN_EQUIPOS)}
+    df["Orden"] = df["Equipo"].map(orden_dict)
 
     columnas = ["Equipo", "Hora Inicio", "Hora Fin", "Descripcion", "Estado"]
     if not all(col in df.columns for col in columnas):
@@ -111,7 +135,7 @@ if file:
         )
     )
 
-    df = df.sort_values(["Equipo", "Hora Inicio"]).reset_index(drop=True)
+    df = df.sort_values(["Orden", "Hora Inicio"]).reset_index(drop=True)
 
     hora_inicio_global = datetime.combine(date.today(), time(6, 30))
     hora_fin_global   = datetime.combine(date.today(), time(18, 30))
@@ -155,7 +179,11 @@ if file:
         tickfont=dict(size=13),
         type="category",
         categoryorder="array",
-        categoryarray=df["Equipo_label"].drop_duplicates().tolist(),
+        categoryarray=(
+            df.sort_values("Orden")["Equipo_label"]
+              .drop_duplicates()
+              .tolist()
+        ),
         autorange="reversed",
         title=""
     )
@@ -296,6 +324,27 @@ if file:
         )
         hora_actual += timedelta(hours=0.5)
 
+    # Líneas separadoras entre grupos
+    fig.add_shape(
+        type="line",
+        x0=hora_inicio_global,
+        x1=hora_fin_global + timedelta(minutes=10),
+        y0=9.5,
+        y1=9.5,
+        line=dict(color="black", width=2),
+        layer="below"
+    )
+    
+    fig.add_shape(
+        type="line",
+        x0=hora_inicio_global,
+        x1=hora_fin_global + timedelta(minutes=10),
+        y0=11.5,
+        y1=11.5,
+        line=dict(color="black", width=2),
+        layer="below"
+    )
+
     st.plotly_chart(fig, use_container_width=True, key="gantt_1")
     
     df_sorted = df.sort_values(["Equipo", "Hora Fin"])
@@ -333,7 +382,14 @@ if file:
 
     df_resumen["Producción acumulada"] = df_resumen["Producción acumulada"].fillna("00:00")
 
-    df_resumen = df_resumen.sort_values("Equipo").reset_index(drop=True)
+    df_resumen["Orden"] = df_resumen["Equipo"].map(orden_dict)
+
+    df_resumen = (
+        df_resumen
+        .sort_values("Orden")
+        .drop(columns="Orden")
+        .reset_index(drop=True)
+    )
 
     df_op = df[df["Estado"] == "Operativo"].copy()
     df_op["Horas"] = df_op["Duracion"].dt.total_seconds() / 3600
