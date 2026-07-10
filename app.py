@@ -184,6 +184,17 @@ if file:
               .drop_duplicates()
               .tolist()
         ),
+
+        # Orden real de los equipos en el gráfico
+        equipos = (
+            df.sort_values("Orden")["Equipo"]
+              .drop_duplicates()
+              .tolist()
+        )
+        
+        # Posición de cada equipo
+        pos = {eq: i for i, eq in enumerate(equipos)}
+        
         autorange="reversed",
         title=""
     )
@@ -310,6 +321,33 @@ if file:
     fig.update_yaxes(title_font=dict(color="black"), tickfont=dict(color="black", size=20))
 
     fig.update_xaxes(dtick=3600000)
+
+
+    # ==========================================
+    # LÍNEAS SEPARADORAS ENTRE GRUPOS
+    # ==========================================
+    
+    equipos = (
+        df.sort_values("Orden")["Equipo"]
+          .drop_duplicates()
+          .tolist()
+    )
+    
+    pos = {eq: i for i, eq in enumerate(equipos)}
+    
+    # Entre DTH y RTR
+    fig.add_hline(
+        y=pos["TD091"] - 0.5,
+        line_width=2,
+        line_color="black"
+    )
+    
+    # Entre RTR y Fuera de Plan
+    fig.add_hline(
+        y=pos["TD078"] - 0.5,
+        line_width=2,
+        line_color="black"
+    )
 
     hora_actual = hora_inicio_global
     equipos_unicos = len(df["Equipo_label"].unique())
