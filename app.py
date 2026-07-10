@@ -92,32 +92,31 @@ FORMULAS_METRAJE = {
     "TD092": {"a": 23.92*0.80, "b": 20.37},
 }
 
-# ==========================================
-# ORDEN PERSONALIZADO DE EQUIPOS
-# ==========================================
-ORDEN_EQUIPOS = [
-    "TD011",
-    "TD012",
-    "TD030",
-    "TD031",
-    "TD072",
-    "TD073",
-    "TD074",
-    "TD076",
-    "TD077",
-    "TD079",
-    "TD091",
-    "TD092",
-    "TD078",
-    "TD080",
-    "TD081"
-]
+CONFIG_EQUIPOS = {
+    "TD011": {"orden": 1,  "grupo": "DTH"},
+    "TD012": {"orden": 2,  "grupo": "DTH"},
+    "TD030": {"orden": 3,  "grupo": "DTH"},
+    "TD031": {"orden": 4,  "grupo": "DTH"},
+    "TD072": {"orden": 5,  "grupo": "DTH"},
+    "TD073": {"orden": 6,  "grupo": "DTH"},
+    "TD074": {"orden": 7,  "grupo": "DTH"},
+    "TD076": {"orden": 8,  "grupo": "DTH"},
+    "TD077": {"orden": 9,  "grupo": "DTH"},
+    "TD079": {"orden":10,  "grupo": "DTH"},
+
+    "TD091": {"orden":11,  "grupo": "RTR"},
+    "TD092": {"orden":12,  "grupo": "RTR"},
+
+    "TD078": {"orden":13,  "grupo": "FUERA"},
+    "TD080": {"orden":14,  "grupo": "FUERA"},
+    "TD081": {"orden":15,  "grupo": "FUERA"},
+}
 
 if file:
     df = pd.read_excel(file)
 
-    orden_dict = {eq: i for i, eq in enumerate(ORDEN_EQUIPOS)}
-    df["Orden"] = df["Equipo"].map(orden_dict)
+    df["Orden"] = df["Equipo"].map(lambda x: CONFIG_EQUIPOS[x]["orden"])
+    df["Grupo"] = df["Equipo"].map(lambda x: CONFIG_EQUIPOS[x]["grupo"])
 
     columnas = ["Equipo", "Hora Inicio", "Hora Fin", "Descripcion", "Estado"]
     if not all(col in df.columns for col in columnas):
@@ -180,21 +179,11 @@ if file:
         type="category",
         categoryorder="array",
         categoryarray=(
-            df.sort_values("Orden")["Equipo_label"]
-              .drop_duplicates()
-              .tolist()
-        ),
-
-        # Orden real de los equipos en el gráfico
-        equipos = (
-            df.sort_values("Orden")["Equipo"]
+            df.sort_values("Orden")
+              ["Equipo_label"]
               .drop_duplicates()
               .tolist()
         )
-        
-        # Posición de cada equipo
-        pos = {eq: i for i, eq in enumerate(equipos)}
-        
         autorange="reversed",
         title=""
     )
@@ -322,32 +311,28 @@ if file:
 
     fig.update_xaxes(dtick=3600000)
 
-
-    # ==========================================
-    # LÍNEAS SEPARADORAS ENTRE GRUPOS
-    # ==========================================
-    
     equipos = (
-        df.sort_values("Orden")["Equipo"]
+        df.sort_values("Orden")[["Equipo","Grupo"]]
           .drop_duplicates()
-          .tolist()
+          .reset_index(drop=True)
     )
     
-    pos = {eq: i for i, eq in enumerate(equipos)}
+    for i in range(1, len(equipos)):
+        if equipos.loc[i, "Grupo"] != equipos.loc[i-1, "Grupo"]:
     
-    # Entre DTH y RTR
-    fig.add_hline(
-        y=pos["TD091"] - 0.5,
-        line_width=2,
-        line_color="black"
-    )
-    
-    # Entre RTR y Fuera de Plan
-    fig.add_hline(
-        y=pos["TD078"] - 0.5,
-        line_width=2,
-        line_color="black"
-    )
+            fig.add_shape(
+                type="line",
+                xref="paper",
+                yref="y",
+                x0=0,
+                x1=1,
+                y0=i-0.5,
+                y1=i-0.5,
+                line=dict(
+                    color="black",
+                    width=2
+                )
+            )
 
     hora_actual = hora_inicio_global
     equipos_unicos = len(df["Equipo_label"].unique())
@@ -362,30 +347,9 @@ if file:
         )
         hora_actual += timedelta(hours=0.5)
 
-    # Líneas separadoras entre grupos
-    fig.add_shape(
-        type="line",
-        x0=hora_inicio_global,
-        x1=hora_fin_global + timedelta(minutes=10),
-        y0=9.5,
-        y1=9.5,
-        line=dict(color="black", width=2),
-        layer="below"
-    )
-    
-    fig.add_shape(
-        type="line",
-        x0=hora_inicio_global,
-        x1=hora_fin_global + timedelta(minutes=10),
-        y0=11.5,
-        y1=11.5,
-        line=dict(color="black", width=2),
-        layer="below"
-    )
-
     st.plotly_chart(fig, use_container_width=True, key="gantt_1")
     
-    df_sorted = df.sort_values(["Equipo", "Hora Fin"])
+    df_sorted = df.sort_values(["Orden", "Hora Fin"])
 
     df_estado_actual = (
         df_sorted
@@ -420,13 +384,12 @@ if file:
 
     df_resumen["Producción acumulada"] = df_resumen["Producción acumulada"].fillna("00:00")
 
-    df_resumen["Orden"] = df_resumen["Equipo"].map(orden_dict)
+    df_resumen["Orden"] = df_resumen["Equipo"].map(lambda x: CONFIG_EQUIPOS[x]["orden"])
 
     df_resumen = (
         df_resumen
         .sort_values("Orden")
         .drop(columns="Orden")
-        .reset_index(drop=True)
     )
 
     df_op = df[df["Estado"] == "Operativo"].copy()
@@ -828,5 +791,4 @@ if file:
             "</h3>",
             unsafe_allow_html=True
         )
-
 
