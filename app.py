@@ -183,7 +183,7 @@ if file:
               ["Equipo_label"]
               .drop_duplicates()
               .tolist()
-        )
+        ),
         autorange="reversed",
         title=""
     )
