@@ -102,13 +102,13 @@ CONFIG_EQUIPOS = {
     "TD076": {"orden": 6,  "grupo": "DTH"},
     "TD077": {"orden": 7,  "grupo": "DTH"},
     "TD079": {"orden": 8,  "grupo": "DTH"},
-    "TD080": {"orden":9,  "grupo": "DTH"},
+    "TD080": {"orden": 9,  "grupo": "DTH"},
     "TD081": {"orden":10,  "grupo": "DTH"},
 
     "TD091": {"orden":11,  "grupo": "RTR"},
     "TD092": {"orden":12,  "grupo": "RTR"},
     
-    "TD012": {"orden":13,  "grupo": "FUERA"},
+    "TD030": {"orden":13,  "grupo": "FUERA"},
     "TD072": {"orden":14,  "grupo": "FUERA"},
     "TD082": {"orden":15,  "grupo": "FUERA"},
     "TD083": {"orden":16,  "grupo": "FUERA"},
