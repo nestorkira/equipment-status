@@ -76,8 +76,6 @@ def convertir_hora(x):
 # =====================================================
 FORMULAS_METRAJE = {
     "TD011": {"a": 23.67*0.95, "b": 9.71},
-    "TD012": {"a": 25.18*0.95, "b": 6.81},
-    "TD030": {"a": 30.28*0.95, "b": 1.59},
     "TD031": {"a": 29.96*0.95, "b": -0.31},
     "TD072": {"a": 29.73*0.95, "b": 1.19},
     "TD073": {"a": 30.22*0.95, "b": 1.93},
@@ -108,10 +106,8 @@ CONFIG_EQUIPOS = {
     "TD092": {"orden": 11,  "grupo": "RTR"},
 
     "TD073": {"orden":12,  "grupo": "FUERA"},
-    "TD012": {"orden":13,  "grupo": "FUERA"},
-    "TD030": {"orden":14,  "grupo": "FUERA"},
-    "TD080": {"orden":15,  "grupo": "FUERA"},
-    "TD083": {"orden":16,  "grupo": "FUERA"},
+    "TD080": {"orden":13,  "grupo": "FUERA"},
+    "TD083": {"orden":14,  "grupo": "FUERA"},
 }
 
 if file:
