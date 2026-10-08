@@ -105,9 +105,9 @@ CONFIG_EQUIPOS = {
     "TD091": {"orden": 10,  "grupo": "RTR"},
     "TD092": {"orden": 11,  "grupo": "RTR"},
 
-    "TD073": {"orden":12,  "grupo": "FUERA"},
-    "TD080": {"orden":13,  "grupo": "FUERA"},
-    "TD083": {"orden":14,  "grupo": "FUERA"},
+    "TD073": {"orden": 12,  "grupo": "FUERA"},
+    "TD080": {"orden": 13,  "grupo": "FUERA"},
+    "TD083": {"orden": 14,  "grupo": "FUERA"},
 }
 
 if file:
