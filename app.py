@@ -106,7 +106,6 @@ CONFIG_EQUIPOS = {
     "TD082": {"orden": 11,  "grupo": "DTH"},
     "TD083": {"orden": 12,  "grupo":"DTH"},
 
-    "TD072": {"orden": 13,  "grupo": "FUERA"},
     "TD076": {"orden": 14,  "grupo": "FUERA"},
 }
 
